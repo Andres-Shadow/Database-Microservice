@@ -1,0 +1,20 @@
+- Prefers a hexagonal (ports and adapters) multi-module architecture and requires clean architecture / code rules not to be broken. Confidence: 0.95
+- Communicates in Spanish and expects responses in Spanish. Confidence: 0.8
+- Prefers externalizing configuration/secrets (e.g. DB host/port/credentials) via AWS Secrets Manager rather than hardcoding them. Confidence: 0.7
+- Prefers Spring WebFlux functional endpoints (RouterFunction/ServerResponse + handler classes) over annotation-based controllers (@RestController/@PostMapping). Confidence: 0.9
+- Prefers @ConfigurationProperties records over @Value for external configuration and avoids hardcoding values (bucket, endpoint, region, credentials, host/port). Confidence: 0.9
+- Prefers R2DBC/reactive data access over JPA for PostgreSQL; avoids JPA repositories. Confidence: 0.8
+- Prefers robust SQL script parsing that respects quotes, comments, and dollar-quoting over naive split(";"). Confidence: 0.8
+- Prefers centralized error handling at the entrypoint with domain/application exceptions and correct HTTP status codes (never 200 on unexpected errors). Confidence: 0.8
+- Prefers Testcontainers for real integration tests (e.g. PostgreSQL + LocalStack) over excessive mocking. Confidence: 0.8
+- Prefers Java records for models, DTOs, and configuration where they make sense. Confidence: 0.7
+- Prefers consistent reactive programming (Mono/Flux) across the application. Confidence: 0.7
+- Prefers Docker Compose for local infrastructure (PostgreSQL, LocalStack). Confidence: 0.8
+- Prefers placing Docker Compose and deployment-related infrastructure files in a `deployment/` folder rather than the project root. Confidence: 0.8
+- Prefers local infrastructure (Docker Compose) credentials and ports to match `application.yaml` so both stay in sync. Confidence: 0.7
+- Prefers avoiding overengineering (no Kafka/Redis/Eureka/API Gateway unless already present and needed). Confidence: 0.6
+- Prefers production-quality code: no System.out.println, TODOs-as-implementation, dead code, or magic values. Confidence: 0.6
+- Prefers security hygiene: validate file name/extension, prevent path traversal, bucket only from config, avoid logging credentials or full SQL. Confidence: 0.7
+- Works on Windows; prefers `.bat` batch scripts for local setup and automation tasks. Confidence: 0.6
+- Prefers convenience/automation scripts that bootstrap local infrastructure state (e.g. create the S3 bucket and upload sample data) rather than manual `docker exec`/`awslocal` steps. Confidence: 0.6
+- Prefers interactive, menu-driven batch scripts (numbered options for list/view detail/upload/delete/exit) for managing local infrastructure artifacts. Confidence: 0.7

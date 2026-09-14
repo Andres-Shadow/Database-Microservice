@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(java:*)",
+      "Shell(docker:*)",
+      "Shell(gradlew.bat:*)",
+      "powershell"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

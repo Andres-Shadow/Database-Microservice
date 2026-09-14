@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ms-db
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/sql_execution
+    username: postgres
+    password: postgres
+  devtools:
+    add-properties: false
+
+adapters:
+  aws:
+    s3:
+      endpoint: http://localhost:4566
+      region: us-east-1
+      bucket-name: sql-execution
+      access-key: test
+      secret-key: test
+      result-prefix: results
+
+aws:
+  region: us-east-1
+
+cors:
+  allowed-origins: http://localhost:4200,http://localhost:8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

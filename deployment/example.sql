@@ -1,0 +1,9 @@
+CREATE TABLE usuarios (
+    id BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    edad INTEGER CHECK (edad >= 18),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    salario NUMERIC(12,2),
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

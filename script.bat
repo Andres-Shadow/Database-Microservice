@@ -1,0 +1,1 @@
+gradle cleanArchitecture --package=co.com.bancolombia --type=reactive --name=ms-db --lombok=true 

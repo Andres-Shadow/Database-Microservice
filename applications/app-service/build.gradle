@@ -1,0 +1,42 @@
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+	implementation project(':reactive-web')
+	implementation 'com.github.bancolombia:aws-secrets-manager-async:4.5.3'
+	implementation 'software.amazon.awssdk:regions'
+	implementation project(':s3-repository')
+	implementation project(':metrics')
+	implementation 'org.reactivecommons.utils:object-mapper:0.1.0'
+	implementation project(':r2dbc-postgresql')
+    implementation project(':model')
+    implementation project(':usecase')
+    implementation 'org.springframework.boot:spring-boot-starter'
+    runtimeOnly('org.springframework.boot:spring-boot-devtools')
+    testImplementation 'com.tngtech.archunit:archunit:1.5.0'
+    testImplementation 'tools.jackson.core:jackson-databind'
+    testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
+    testImplementation 'org.testcontainers:postgresql:1.20.4'
+    testImplementation 'org.testcontainers:localstack:1.20.4'
+    testImplementation 'software.amazon.awssdk:s3'
+    testImplementation 'org.postgresql:r2dbc-postgresql'
+    testImplementation 'org.springframework:spring-r2dbc'
+}
+
+pitest {
+    excludedTestClasses = ['co.com.bancolombia.SqlExecutionIntegrationTest']
+}
+
+tasks.register('explodedJar', Copy) {
+    with jar
+    into layout.buildDirectory.dir("exploded")
+}
+
+jar {
+    // To disable the *-plain.jar
+    enabled = false
+}
+
+bootJar {
+    // Sets output jar name
+    archiveFileName = "${project.getParent().getName()}.${archiveExtension.get()}"
+}
