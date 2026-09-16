@@ -1,6 +1,6 @@
 - Prefers a hexagonal (ports and adapters) multi-module architecture and requires clean architecture / code rules not to be broken. Confidence: 0.95
 - Communicates in Spanish and expects responses in Spanish. Confidence: 0.8
-- Prefers externalizing configuration/secrets (e.g. DB host/port/credentials) via AWS Secrets Manager rather than hardcoding them. Confidence: 0.7
+- Prefers externalizing configuration/secrets (e.g. DB host/port/credentials) via AWS Secrets Manager rather than hardcoding them. Confidence: 0.85
 - Prefers Spring WebFlux functional endpoints (RouterFunction/ServerResponse + handler classes) over annotation-based controllers (@RestController/@PostMapping). Confidence: 0.9
 - Prefers @ConfigurationProperties records over @Value for external configuration and avoids hardcoding values (bucket, endpoint, region, credentials, host/port). Confidence: 0.9
 - Prefers R2DBC/reactive data access over JPA for PostgreSQL; avoids JPA repositories. Confidence: 0.8

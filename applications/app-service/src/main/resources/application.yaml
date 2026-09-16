@@ -4,10 +4,6 @@ server:
 spring:
   application:
     name: ms-db
-  r2dbc:
-    url: r2dbc:postgresql://localhost:5432/sql_execution
-    username: postgres
-    password: postgres
   devtools:
     add-properties: false
 
@@ -20,6 +16,12 @@ adapters:
       access-key: test
       secret-key: test
       result-prefix: results
+    secrets:
+      secret-name: ms-db/db-credentials
+      endpoint: http://localhost:4566
+      region: us-east-1
+      access-key: test
+      secret-key: test
 
 aws:
   region: us-east-1
