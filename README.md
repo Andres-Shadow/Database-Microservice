@@ -27,6 +27,7 @@ mismo bucket.
 - [Levantar el microservicio](#levantar-el-microservicio)
 - [API](#api)
 - [Funcionalidades de gestión de usuarios](#funcionalidades-de-gestión-de-usuarios)
+- [Endpoints de administración](#endpoints-de-administración)
 - [Seguridad](#seguridad)
 - [Testing](#testing)
 - [Build](#build)
@@ -606,6 +607,128 @@ docker exec ms-localstack awslocal dynamodb scan --table-name user_backups --out
 curl -X POST http://localhost:8080/api/v1/users/restore \
   -H "Content-Type: application/json" \
   -d '{"backupId":"<backup-id-del-paso-4>"}'
+```
+
+---
+
+## Endpoints de administración
+
+Endpoints utilitarios para consultar y administrar los recursos de S3 y DynamoDB.
+
+### S3 — Listar archivos
+
+```bash
+curl http://localhost:8080/api/v1/manage/s3/files
+```
+
+**Response (200)**
+
+```json
+[
+  {
+    "key": "approved/test.sql",
+    "size": 245,
+    "lastModified": "2026-09-18T15:30:00Z"
+  },
+  {
+    "key": "change_name.txt",
+    "size": 42,
+    "lastModified": "2026-09-18T16:00:00Z"
+  }
+]
+```
+
+### S3 — Ver detalle de un archivo
+
+```bash
+curl "http://localhost:8080/api/v1/manage/s3/files/detail?key=approved/test.sql"
+```
+
+**Response (200)**
+
+```json
+{
+  "key": "approved/test.sql",
+  "size": 245,
+  "lastModified": "2026-09-18T15:30:00Z",
+  "content": "CREATE TABLE usuarios (...);"
+}
+```
+
+### S3 — Eliminar un archivo
+
+```bash
+curl -X DELETE "http://localhost:8080/api/v1/manage/s3/files?key=change_name.txt"
+```
+
+**Response (200)**
+
+```json
+{
+  "message": "File deleted: change_name.txt"
+}
+```
+
+### DynamoDB — Listar backups
+
+```bash
+curl http://localhost:8080/api/v1/manage/dynamo/backups
+```
+
+**Response (200)**
+
+```json
+[
+  {
+    "backupId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "user": {
+      "nombre": "Juan Perez",
+      "email": "juan@example.com",
+      "edad": 30,
+      "activo": true,
+      "salario": 5000000.00,
+      "fechaRegistro": "2026-01-15T10:30:00"
+    },
+    "deletedAt": "2026-09-18T22:00:00"
+  }
+]
+```
+
+### DynamoDB — Ver detalle de un backup
+
+```bash
+curl http://localhost:8080/api/v1/manage/dynamo/backups/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+**Response (200)**
+
+```json
+{
+  "backupId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "user": {
+    "nombre": "Juan Perez",
+    "email": "juan@example.com",
+    "edad": 30,
+    "activo": true,
+    "salario": 5000000.00,
+    "fechaRegistro": "2026-01-15T10:30:00"
+  },
+  "deletedAt": "2026-09-18T22:00:00"
+}
+```
+
+### DynamoDB — Eliminar un backup
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/manage/dynamo/backups/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+**Response (200)**
+
+```json
+{
+  "message": "Backup deleted: a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
 ```
 
 ---
