@@ -18,3 +18,5 @@
 - Works on Windows; prefers `.bat` batch scripts for local setup and automation tasks. Confidence: 0.6
 - Prefers convenience/automation scripts that bootstrap local infrastructure state (e.g. create the S3 bucket and upload sample data) rather than manual `docker exec`/`awslocal` steps. Confidence: 0.6
 - Prefers interactive, menu-driven batch scripts (numbered options for list/view detail/upload/delete/exit) for managing local infrastructure artifacts. Confidence: 0.7
+- Prefers the agent to ask clarifying questions about ambiguous requirements before coding, rather than making assumptions. Explicitly invites: "si tienes alguna duda de la implementación requerida plántemelas". Confidence: 0.8
+- Gives detailed, structured requirements with numbered items, explicit rules, and edge-case notes (e.g. "n lineas", "siempre se debe crear un backup"). Confidence: 0.7

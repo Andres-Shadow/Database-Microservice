@@ -1,39 +1,39 @@
 server:
   port: 8080
-
 spring:
   application:
-    name: ms-db
+    name: "ms-db"
   devtools:
     add-properties: false
-
 adapters:
   aws:
     s3:
-      endpoint: http://localhost:4566
-      region: us-east-1
-      bucket-name: sql-execution
-      access-key: test
-      secret-key: test
-      result-prefix: results
+      endpoint: "http://localhost:4566"
+      region: "us-east-1"
+      bucket-name: "sql-execution"
+      access-key: "test"
+      secret-key: "test"
+      result-prefix: "results"
     secrets:
-      secret-name: ms-db/db-credentials
-      endpoint: http://localhost:4566
-      region: us-east-1
-      access-key: test
-      secret-key: test
-
+      secret-name: "ms-db/db-credentials"
+      endpoint: "http://localhost:4566"
+      region: "us-east-1"
+      access-key: "test"
+      secret-key: "test"
+    dynamodb:
+      endpoint: "http://localhost:4566"
+      region: "us-east-1"
+      access-key: "test"
+      secret-key: "test"
 aws:
-  region: us-east-1
-
+  region: "us-east-1"
 cors:
-  allowed-origins: http://localhost:4200,http://localhost:8080
-
+  allowed-origins: "http://localhost:4200,http://localhost:8080"
 management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: "health,prometheus"
   endpoint:
     health:
       probes:

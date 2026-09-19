@@ -62,20 +62,21 @@ goto MENU
 :CREATE
 echo.
 echo Creando secreto "%SECRET_NAME%" en LocalStack...
-for /f "usebackq delims=" %%A in ("%SECRET_FILE%") do (
-    set "JSON=%%A"
-)
+
+docker cp "%SECRET_FILE%" %CONTAINER%:/tmp/secret.json
 
 docker exec %CONTAINER% awslocal secretsmanager create-secret ^
     --name "%SECRET_NAME%" ^
-    --secret-string file:///dev/stdin < "%SECRET_FILE%" 2>nul
+    --secret-string file:///tmp/secret.json 2>nul
 
 if errorlevel 1 (
     echo El secreto ya existe, actualizando...
     docker exec %CONTAINER% awslocal secretsmanager update-secret ^
         --secret-id "%SECRET_NAME%" ^
-        --secret-string file:///dev/stdin < "%SECRET_FILE%"
+        --secret-string file:///tmp/secret.json 2>nul
 )
+
+docker exec %CONTAINER% rm -f /tmp/secret.json 2>nul
 
 if errorlevel 1 (
     echo [ERROR] No se pudo crear ni actualizar el secreto.

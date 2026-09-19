@@ -20,7 +20,7 @@ services:
     image: localstack/localstack:3
     container_name: ms-localstack
     environment:
-      - SERVICES=s3,secretsmanager
+      - SERVICES=s3,secretsmanager,dynamodb
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test

@@ -1,0 +1,5 @@
+- Prefers batch operations to continue processing all entries even if some fail, and report per-entry success/failure in a result file rather than stopping at the first error. Confidence: 0.7
+- Prefers POST with body over GET with path variables for passing resource identifiers to REST endpoints. Confidence: 0.6
+- Prefers batch file processing pipelines with fixed input filenames, where the source file is deleted and a `_result.txt` file is uploaded after processing. Confidence: 0.7
+- Prefers backup/safety mechanisms before destructive operations (e.g., SELECT snapshot before DELETE, persist backup to a separate store) to enable recovery. Confidence: 0.7
+- Trusts the agent to make design decisions (naming, schema, patterns) as long as they align with the project's clean architecture conventions. Confidence: 0.7

@@ -26,6 +26,7 @@ mismo bucket.
 - [Crear el bucket y subir archivos](#crear-el-bucket-y-subir-archivos)
 - [Levantar el microservicio](#levantar-el-microservicio)
 - [API](#api)
+- [Funcionalidades de gestión de usuarios](#funcionalidades-de-gestión-de-usuarios)
 - [Seguridad](#seguridad)
 - [Testing](#testing)
 - [Build](#build)
@@ -73,6 +74,8 @@ applications/app-service          (composición raíz, main, wiring)
         │
         ├──► infrastructure/driven-adapters/r2dbc-postgresql (adaptador PostgreSQL)
         │
+        ├──► infrastructure/driven-adapters/dynamo-db      (adaptador DynamoDB - backups)
+        │
         └──► infrastructure/helpers/metrics                (publicador de métricas AWS)
         │
         ▼
@@ -87,18 +90,23 @@ Reglas que se respetan:
 - `domain/model` y `domain/usecase` **no** dependen de Spring, AWS SDK, S3, R2DBC, PostgreSQL, HTTP
   ni de `application.yaml`.
 - Los adaptadores implementan **puertos** definidos en el dominio (inversión de dependencias).
-- El caso de uso solo depende de abstracciones (`SqlScriptStorage`, `SqlStatementParser`, `SqlExecutor`).
+- Los casos de uso solo dependen de abstracciones (puertos definidos en `model`).
 - El entry point no contiene lógica de negocio.
 - El plugin de Clean Architecture (`validateStructure`) y un `ArchitectureTest` auto-generado validan
   estas reglas en cada build.
 
 ### Puertos del dominio
 
-| Puerto               | Responsabilidad                                              | Implementación            |
-|----------------------|--------------------------------------------------------------|---------------------------|
-| `SqlScriptStorage`   | Leer script y guardar resultado                              | `S3SqlScriptStorage`      |
-| `SqlStatementParser` | Dividir el contenido en sentencias                           | `DefaultSqlStatementParser` |
-| `SqlExecutor`        | Ejecutar una sentencia y devolver su resultado               | `PostgresSqlExecutor`     |
+| Puerto                  | Responsabilidad                                              | Implementación              |
+|-------------------------|--------------------------------------------------------------|-----------------------------|
+| `SqlScriptStorage`      | Leer script SQL y guardar resultado                          | `S3SqlScriptStorage`        |
+| `SqlStatementParser`    | Dividir el contenido en sentencias SQL                       | `DefaultSqlStatementParser` |
+| `SqlExecutor`           | Ejecutar una sentencia SQL y devolver su resultado           | `PostgresSqlExecutor`       |
+| `BatchFileStorage`      | Leer/eliminar archivos de lote y guardar resultados          | `S3BatchFileStorage`        |
+| `UserRepository`        | CRUD de usuarios en PostgreSQL                               | `PostgresUserRepository`    |
+| `UserBackupRepository`  | Guardar/buscar backups de usuarios en DynamoDB               | `DynamoDBUserBackupRepository` |
+| `ChangeNameParser`      | Parsear archivo `id;nombre_nuevo`                            | `DefaultChangeNameParser`   |
+| `DeleteUserParser`      | Parsear archivo `id;nombre;email`                            | `DefaultDeleteUserParser`   |
 
 ---
 
@@ -300,7 +308,13 @@ docker compose -f deployment/docker-compose.yml up -d
 Esto levanta:
 
 - `ms-postgres` → PostgreSQL 16, base `sql_execution`, usuario `postgres`, contraseña `postgres`, puerto `5432`.
-- `ms-localstack` → LocalStack con S3, puerto `4566`, credenciales `test`/`test`.
+- `ms-localstack` → LocalStack con S3, Secrets Manager y DynamoDB, puerto `4566`, credenciales `test`/`test`.
+
+### Crear la tabla de DynamoDB (backups)
+
+```bash
+deployment\setup-dynamo.bat
+```
 
 ---
 
@@ -387,6 +401,211 @@ curl -X POST http://localhost:8080/api/v1/sql/execute \
 
 ```json
 { "message": "fileName must have the .sql extension" }
+```
+
+---
+
+## Funcionalidades de gestión de usuarios
+
+Además de la ejecución de scripts SQL, el microservicio expone tres endpoints para gestionar
+operaciones en lote sobre la tabla `usuarios`, con archivos fijos en S3 y backup automático en
+DynamoDB.
+
+### Requisitos previos
+
+Antes de usar los nuevos endpoints, la tabla de DynamoDB debe existir en LocalStack:
+
+```bash
+deployment\setup-dynamo.bat
+```
+
+Esto crea la tabla `user_backups` con `backupId` como partition key.
+
+Para administrar los backups manualmente:
+
+```bash
+deployment\dynamo-manager.bat
+```
+
+### Cambiar nombres en lote
+
+Lee `change_name.txt` desde S3. Cada línea tiene el formato `id;nombre_nuevo` y genera un
+`UPDATE usuarios SET nombre = ? WHERE id = ?`. El archivo original se elimina y se sube
+`change_name_result.txt` con el reporte.
+
+**Archivo `change_name.txt` de ejemplo:**
+
+```text
+1;Juan Perez
+2;Maria Lopez
+3;Carlos Ruiz
+```
+
+**Subir el archivo a S3:**
+
+```bash
+docker exec -i ms-localstack awslocal s3 cp - s3://sql-execution/change_name.txt < change_name.txt
+```
+
+**Request**
+
+```http
+POST /api/v1/users/change-name
+```
+
+**Ejemplo con curl**
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users/change-name
+```
+
+**Response (200)**
+
+```json
+{
+  "sourceFile": "change_name.txt",
+  "status": "SUCCESS",
+  "totalEntries": 3,
+  "successfulEntries": 3,
+  "failedEntries": 0,
+  "totalExecutionTimeMs": 85,
+  "resultFile": "change_name_result.txt"
+}
+```
+
+Si alguna entrada falla, el estado será `FAILED` y el reporte `_result.txt` detalla cuáles
+entradas tuvieron éxito y cuáles no.
+
+---
+
+### Eliminar usuarios con backup
+
+Lee `delete_user.txt` desde S3. Cada línea tiene el formato `id;nombre;email`. **Antes** de cada
+DELETE, se ejecuta un `SELECT *` con las mismas cláusulas y el registro se guarda en la tabla
+`user_backups` de DynamoDB como backup. Solo si el backup es exitoso se ejecuta el DELETE. El
+archivo original se elimina y se sube `delete_user_result.txt` con el reporte.
+
+**Archivo `delete_user.txt` de ejemplo:**
+
+```text
+1;Juan Perez;juan@example.com
+2;Maria Lopez;maria@example.com
+3;Carlos Ruiz;carlos@example.com
+```
+
+**Subir el archivo a S3:**
+
+```bash
+docker exec -i ms-localstack awslocal s3 cp - s3://sql-execution/delete_user.txt < delete_user.txt
+```
+
+**Request**
+
+```http
+POST /api/v1/users/delete
+```
+
+**Ejemplo con curl**
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users/delete
+```
+
+**Response (200)**
+
+```json
+{
+  "sourceFile": "delete_user.txt",
+  "status": "SUCCESS",
+  "totalEntries": 3,
+  "successfulEntries": 3,
+  "failedEntries": 0,
+  "totalExecutionTimeMs": 120,
+  "resultFile": "delete_user_result.txt"
+}
+```
+
+Cada backup en DynamoDB genera un `backupId` (UUID) que aparece en los logs y permite restaurar
+el registro.
+
+**Flujo por cada entrada:**
+
+```text
+1. SELECT * FROM usuarios WHERE id = X AND nombre = Y AND email = Z
+2. Guardar snapshot en DynamoDB (user_backups) con backupId único
+3. DELETE FROM usuarios WHERE id = X AND nombre = Y AND email = Z
+   └── Si el paso 2 falla, el DELETE NO se ejecuta
+```
+
+---
+
+### Restaurar usuario desde backup
+
+Recibe un `backupId` y restaura el registro guardado en DynamoDB de vuelta a PostgreSQL. Como el
+`id` es autogenerado (`BIGSERIAL`), el INSERT genera un nuevo `id`.
+
+**Request**
+
+```http
+POST /api/v1/users/restore
+Content-Type: application/json
+```
+
+```json
+{
+  "backupId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+**Ejemplo con curl**
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users/restore \
+  -H "Content-Type: application/json" \
+  -d '{"backupId":"a1b2c3d4-e5f6-7890-abcd-ef1234567890"}'
+```
+
+**Response (200)**
+
+```json
+{
+  "message": "User restored successfully from backup a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+**Para obtener el backupId**, listar los backups con el script interactivo:
+
+```bash
+deployment\dynamo-manager.bat
+```
+
+O directamente por CLI:
+
+```bash
+docker exec ms-localstack awslocal dynamodb scan --table-name user_backups --query "Items[*].{BackupId:backup_id.S,Nombre:nombre.S,Email:email.S}" --output table
+```
+
+---
+
+### Ejemplo completo de flujo de contingencia
+
+```bash
+# 1. Crear la tabla DynamoDB
+deployment\setup-dynamo.bat
+
+# 2. Subir archivo de eliminación a S3
+docker exec -i ms-localstack awslocal s3 cp - s3://sql-execution/delete_user.txt < delete_user.txt
+
+# 3. Ejecutar eliminaciones (con backup automático en DynamoDB)
+curl -X POST http://localhost:8080/api/v1/users/delete
+
+# 4. Ver los backups disponibles
+docker exec ms-localstack awslocal dynamodb scan --table-name user_backups --output json
+
+# 5. Restaurar un usuario específico si hubo un error
+curl -X POST http://localhost:8080/api/v1/users/restore \
+  -H "Content-Type: application/json" \
+  -d '{"backupId":"<backup-id-del-paso-4>"}'
 ```
 
 ---
