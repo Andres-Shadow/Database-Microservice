@@ -1,5 +1,7 @@
 package co.com.bancolombia.usecase.sql;
 
+import co.com.bancolombia.model.management.gateways.ExecutionHistoryRepository;
+import co.com.bancolombia.model.management.gateways.OperationMetrics;
 import co.com.bancolombia.model.sql.ExecutionStatus;
 import co.com.bancolombia.model.sql.SqlExecutionResult;
 import co.com.bancolombia.model.sql.SqlScript;
@@ -30,12 +32,15 @@ class ExecuteSqlScriptUseCaseTest {
     private final SqlStatementParser parser = mock(SqlStatementParser.class);
     private final SqlExecutor executor = mock(SqlExecutor.class);
     private final SqlExecutionReportFormatter formatter = mock(SqlExecutionReportFormatter.class);
+    private final ExecutionHistoryRepository historyRepository = mock(ExecutionHistoryRepository.class);
+    private final OperationMetrics metrics = mock(OperationMetrics.class);
 
     private final ExecuteSqlScriptUseCase useCase =
-            new ExecuteSqlScriptUseCase(storage, parser, executor, formatter);
+            new ExecuteSqlScriptUseCase(storage, parser, executor, formatter, historyRepository, metrics);
 
     @Test
     void shouldExecuteAllStatementsSuccessfullyAndPersistResult() {
+        when(historyRepository.save(any())).thenReturn(Mono.empty());
         List<SqlStatement> statements = List.of(
                 new SqlStatement(1, "UPDATE 1"),
                 new SqlStatement(2, "UPDATE 2"));
@@ -63,6 +68,7 @@ class ExecuteSqlScriptUseCaseTest {
 
     @Test
     void shouldStopOnFirstFailureAndMarkRemainingAsNotExecuted() {
+        when(historyRepository.save(any())).thenReturn(Mono.empty());
         List<SqlStatement> statements = List.of(
                 new SqlStatement(1, "UPDATE 1"),
                 new SqlStatement(2, "UPDATE 2"),

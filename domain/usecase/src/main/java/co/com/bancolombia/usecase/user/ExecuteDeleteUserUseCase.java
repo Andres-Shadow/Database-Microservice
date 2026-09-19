@@ -1,5 +1,8 @@
 package co.com.bancolombia.usecase.user;
 
+import co.com.bancolombia.model.management.ExecutionRecord;
+import co.com.bancolombia.model.management.gateways.ExecutionHistoryRepository;
+import co.com.bancolombia.model.management.gateways.OperationMetrics;
 import co.com.bancolombia.model.sql.ExecutionStatus;
 import co.com.bancolombia.model.user.*;
 import co.com.bancolombia.model.user.exceptions.BatchFileNotFoundException;
@@ -25,6 +28,8 @@ public class ExecuteDeleteUserUseCase {
     private final UserRepository userRepository;
     private final UserBackupRepository backupRepository;
     private final BatchOperationReportFormatter formatter;
+    private final ExecutionHistoryRepository historyRepository;
+    private final OperationMetrics metrics;
 
     public Mono<BatchOperationOutcome> execute() {
         long start = System.nanoTime();
@@ -45,7 +50,8 @@ public class ExecuteDeleteUserUseCase {
                 .concatMap(this::executeEntry)
                 .collectList()
                 .map(results -> buildResult(results, start))
-                .flatMap(this::persistResult);
+                .flatMap(this::persistResult)
+                .flatMap(outcome -> recordHistory(outcome, start).thenReturn(outcome));
     }
 
     private Mono<BatchEntryResult> executeEntry(DeleteUserEntry entry) {
@@ -74,7 +80,10 @@ public class ExecuteDeleteUserUseCase {
                 snapshot,
                 LocalDateTime.now());
         return backupRepository.save(backup)
-                .doOnSuccess(b -> log.info("Backup saved for user id=" + entry.id() + ", backupId=" + b.backupId()));
+                .doOnSuccess(b -> {
+                    log.info("Backup saved for user id=" + entry.id() + ", backupId=" + b.backupId());
+                    metrics.recordBackupOperation("created");
+                });
     }
 
     private BatchOperationResult buildResult(List<BatchEntryResult> entries, long start) {
@@ -92,6 +101,25 @@ public class ExecuteDeleteUserUseCase {
                     log.info("Result file generated: " + resultFile);
                     return BatchOperationOutcome.from(result, resultFile);
                 });
+    }
+
+    private Mono<Void> recordHistory(BatchOperationOutcome outcome, long start) {
+        metrics.recordExecution("DELETE_USER", outcome.status().name(), elapsedMs(start));
+
+        ExecutionRecord record = new ExecutionRecord(
+                UUID.randomUUID().toString(),
+                "DELETE_USER",
+                outcome.sourceFile(),
+                outcome.status(),
+                outcome.totalEntries(),
+                outcome.successfulEntries(),
+                outcome.failedEntries(),
+                outcome.totalExecutionTimeMs(),
+                LocalDateTime.now());
+
+        return historyRepository.save(record)
+                .doOnError(error -> log.warning("Failed to save execution history: " + error.getMessage()))
+                .onErrorResume(error -> Mono.empty());
     }
 
     private long elapsedMs(long start) {

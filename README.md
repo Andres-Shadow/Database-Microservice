@@ -28,6 +28,7 @@ mismo bucket.
 - [API](#api)
 - [Funcionalidades de gestión de usuarios](#funcionalidades-de-gestión-de-usuarios)
 - [Endpoints de administración](#endpoints-de-administración)
+- [Historial de ejecuciones y métricas](#historial-de-ejecuciones-y-métricas)
 - [Seguridad](#seguridad)
 - [Testing](#testing)
 - [Build](#build)
@@ -729,6 +730,92 @@ curl -X DELETE http://localhost:8080/api/v1/manage/dynamo/backups/a1b2c3d4-e5f6-
 {
   "message": "Backup deleted: a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
+```
+
+---
+
+## Historial de ejecuciones y métricas
+
+Cada operación de negocio (SQL, change-name, delete, restore) queda registrada automáticamente en
+DynamoDB y emite métricas a Micrometer/Prometheus.
+
+### Historial de ejecuciones
+
+Cada ejecución guarda un registro en la tabla `execution_history` de DynamoDB con: `executionId`,
+`operationType`, `sourceFile`, `status`, contadores de entradas, tiempo de ejecución y timestamp.
+
+**Consultar todo el historial**
+
+```bash
+curl http://localhost:8080/api/v1/manage/history
+```
+
+**Response (200)**
+
+```json
+[
+  {
+    "executionId": "a1b2c3d4-...",
+    "operationType": "SQL_EXECUTE",
+    "sourceFile": "approved/test.sql",
+    "status": "SUCCESS",
+    "totalEntries": 3,
+    "successfulEntries": 3,
+    "failedEntries": 0,
+    "executionTimeMs": 85,
+    "executedAt": "2026-09-18T22:00:00"
+  },
+  {
+    "executionId": "e5f6a7b8-...",
+    "operationType": "DELETE_USER",
+    "sourceFile": "delete_user.txt",
+    "status": "FAILED",
+    "totalEntries": 3,
+    "successfulEntries": 2,
+    "failedEntries": 1,
+    "executionTimeMs": 120,
+    "executedAt": "2026-09-18T22:05:00"
+  }
+]
+```
+
+**Filtrar por tipo de operación**
+
+```bash
+curl "http://localhost:8080/api/v1/manage/history?type=CHANGE_NAME"
+```
+
+Tipos disponibles: `SQL_EXECUTE`, `CHANGE_NAME`, `DELETE_USER`, `RESTORE_USER`.
+
+---
+
+### Métricas (Prometheus)
+
+Las métricas se exponen en el endpoint de Actuator:
+
+```bash
+curl http://localhost:8080/actuator/prometheus
+```
+
+Métricas custom disponibles (prefijo `ms.db.`):
+
+| Métrica | Tipo | Tags | Descripción |
+|---------|------|------|-------------|
+| `ms.db.operations.total` | Counter | `operation`, `status` | Total de operaciones ejecutadas por tipo y resultado |
+| `ms.db.operations.duration` | Timer | `operation` | Distribución de duración por tipo de operación |
+| `ms.db.backups.total` | Counter | `operation` | Backups creados (`created`) y restaurados (`restored`) |
+
+**Ejemplo de consulta en Prometheus/ Grafana**
+
+```promql
+# Tasa de operaciones por minuto
+rate(ms_db_operations_total[1m])
+
+# Tiempo promedio de ejecución por tipo
+rate(ms_db_operations_duration_seconds_sum[5m]) / rate(ms_db_operations_duration_seconds_count[5m])
+
+# Total de backups creados
+ms_db_backups_total{operation="created"}
 ```
 
 ---

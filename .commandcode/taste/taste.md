@@ -21,3 +21,4 @@
 - Prefers the agent to ask clarifying questions about ambiguous requirements before coding, rather than making assumptions. Explicitly invites: "si tienes alguna duda de la implementación requerida plántemelas". Confidence: 0.8
 - Gives detailed, structured requirements with numbered items, explicit rules, and edge-case notes (e.g. "n lineas", "siempre se debe crear un backup"). Confidence: 0.7
 - Prefers management/admin utility endpoints separated from business endpoints under a distinct versioned path (e.g. `/api/v1/manage/...`), with resource-grouped sub-paths (`/s3/`, `/dynamo/`). Confidence: 0.7
+- Expects the project README to be updated whenever new endpoints are added — including curl examples, sample responses, and PromQL query examples for new metrics. Confidence: 0.85

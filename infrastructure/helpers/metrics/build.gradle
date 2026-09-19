@@ -1,4 +1,5 @@
 dependencies {
+    implementation project(':model')
     implementation 'org.springframework:spring-context'
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:metrics-spi'
